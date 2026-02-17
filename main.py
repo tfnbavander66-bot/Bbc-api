@@ -4080,7 +4080,7 @@ async def TcPChaT(ip, port, AutHToKen, key, iv, LoGinDaTaUncRypTinG, ready_event
 
 
 async def MaiiiinE():
-    Uid , Pw = '4341334135','3AA183D0E253639C821C66190B2502508ADA8067BFBEF1B5EA70476C297F44E3'
+    Uid , Pw = '4332268118','BIGBULL_QQ39E_BY_SPIDEERIO_GAMING_XEGYC'
     
 
     open_id , access_token = await GeNeRaTeAccEss(Uid , Pw)
