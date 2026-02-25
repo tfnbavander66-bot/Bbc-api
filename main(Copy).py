@@ -249,6 +249,8 @@ def get_random_color():
         "[FAEBD7]"
     ]
     return random.choice(colors)
+#
+
 
 
 # ============================================
@@ -995,207 +997,6 @@ async def TcPChaT(ip, port, AutHToKen, key_val, iv_val, LoGinDaTaUncRypTinG, rea
             whisper_writer = None
         await asyncio.sleep(reconnect_delay)
 
-
-# ============================================
-# NEW FUNCTIONS FOR API COMMANDS
-# ============================================
-
-async def process_command_queue():
-    """Process commands from API queue"""
-    from api import command_queue
-    
-    while True:
-        try:
-            if not command_queue.empty():
-                command = command_queue.get_nowait()
-                
-                # CASE 1: JOIN + EMOTE + LEAVE
-                if command['type'] == 'join_emote_leave':
-                    teamcode = command['teamcode']
-                    uids = command['uids']
-                    emote_code = command['emote_code']
-                    
-                    # Background task
-                    asyncio.create_task(join_emote_and_leave(teamcode, uids, emote_code))
-                    print(f"[QUEUE] ✅ Processing join+emote+leave for team {teamcode}")
-                
-                # CASE 2: 5-PLAYER GROUP
-                elif command['type'] == 'create_five_group':
-                    uid = command['uid']
-                    asyncio.create_task(create_five_player_group(uid))
-                    print(f"[QUEUE] 🎮 Processing 5-player group for UID: {uid}")
-                
-                # CASE 3: SOLO LEAVE
-                elif command['type'] == 'solo_leave':
-                    asyncio.create_task(solo_leave_command())
-                    print(f"[QUEUE] 👋 Processing solo leave")
-                
-                # CASE 4: NORMAL EMOTE
-                elif command['type'] == 'emote':
-                    uids = command['uids']
-                    emote_code = command['emote_code']
-                    asyncio.create_task(normal_emote_command(uids, emote_code))
-                    print(f"[QUEUE] 📨 Processing emote for {len(uids)} player(s)")
-                
-                # CASE 5: JOIN ONLY
-                elif command['type'] == 'join':
-                    teamcode = command['teamcode']
-                    asyncio.create_task(join_only_command(teamcode))
-                    print(f"[QUEUE] 🔑 Processing join for team {teamcode}")
-            
-            await asyncio.sleep(0.1)
-            
-        except Exception as e:
-            print(f"[QUEUE ERROR] {e}")
-            await asyncio.sleep(0.5)
-
-
-async def join_emote_and_leave(teamcode, uids, emote_code):
-    """Join team, send emote, then leave after 1 second (uses /solo)"""
-    global whisper_writer, online_writer, key, iv, region
-    
-    try:
-        print(f"[JEL] 🚀 Starting: Join team {teamcode} → Emote {len(uids)} player(s) → Leave after 1s")
-        
-        # STEP 1: JOIN TEAM (same as /x/ command)
-        join_packet = await GenJoinSquadsPacket(teamcode, key, iv)
-        if online_writer:
-            await SEndPacKeT(whisper_writer, online_writer, 'OnLine', join_packet)
-            print(f"[JEL] ✅ Joined team with code: {teamcode}")
-        else:
-            print(f"[JEL] ❌ Online writer not available")
-            return
-        
-        # Wait for team to be ready
-        await asyncio.sleep(2.0)
-        
-        # STEP 2: SEND EMOTE to all UIDs (same as !e command)
-        for uid in uids:
-            try:
-                emote_packet = await Emote_k(int(uid), int(emote_code), key, iv, region)
-                if online_writer:
-                    await SEndPacKeT(whisper_writer, online_writer, 'OnLine', emote_packet)
-                    print(f"[JEL] 📨 Emote sent to UID: {uid}")
-                    await asyncio.sleep(0.2)
-            except Exception as e:
-                print(f"[JEL] ❌ Failed to send emote to {uid}: {e}")
-        
-        print(f"[JEL] ✅ Emote sent to {len(uids)} player(s)")
-        
-        # STEP 3: WAIT 1 SECOND
-        await asyncio.sleep(1.0)
-        
-        # STEP 4: LEAVE TEAM (same as /solo command)
-        if online_writer:
-            leave_packet = await ExiT(None, key, iv)
-            await SEndPacKeT(whisper_writer, online_writer, 'OnLine', leave_packet)
-            print(f"[JEL] 👋 Left team after emote")
-        else:
-            print(f"[JEL] ❌ Cannot leave - online writer not available")
-        
-    except Exception as e:
-        print(f"[JEL ERROR] {e}")
-
-
-async def create_five_player_group(uid):
-    """Create 5-player group (same as /5 command)"""
-    global whisper_writer, online_writer, key, iv, region
-    
-    try:
-        print(f"[5-GROUP] 🎮 Creating 5-player group for UID: {uid}")
-        
-        # Step 1: Send private message
-        message = f"[B][C]{get_random_color()}\n\nAccepT My Invitation FasT\n\n"
-        P = await SEndMsG(2, message, int(uid), int(uid), key, iv)
-        await SEndPacKeT(whisper_writer, online_writer, 'ChaT', P)
-        print(f"[5-GROUP] 📨 Private message sent to {uid}")
-        
-        # Step 2: Open squad
-        PAc = await OpEnSq(key, iv, region)
-        await SEndPacKeT(whisper_writer, online_writer, 'OnLine', PAc)
-        print(f"[5-GROUP] 🚪 Squad opened")
-        
-        # Step 3: Change to 5 players
-        C = await cHSq(5, int(uid), key, iv, region)
-        await asyncio.sleep(0.5)
-        await SEndPacKeT(whisper_writer, online_writer, 'OnLine', C)
-        print(f"[5-GROUP] 👥 Changed to 5 players")
-        
-        # Step 4: Send invitation
-        V = await SEnd_InV(5, int(uid), key, iv, region)
-        await asyncio.sleep(0.5)
-        await SEndPacKeT(whisper_writer, online_writer, 'OnLine', V)
-        print(f"[5-GROUP] ✉️ Invitation sent")
-        
-        # Step 5: Exit after 3 seconds
-        E = await ExiT(None, key, iv)
-        await asyncio.sleep(3)
-        await SEndPacKeT(whisper_writer, online_writer, 'OnLine', E)
-        print(f"[5-GROUP] 👋 Exited squad after 3 seconds")
-        
-        print(f"[5-GROUP] ✅ Successfully created 5-player group for {uid}")
-        
-    except Exception as e:
-        print(f"[5-GROUP ERROR] {e}")
-
-
-async def solo_leave_command():
-    """Leave team (same as /solo)"""
-    global whisper_writer, online_writer, key, iv
-    
-    try:
-        if online_writer:
-            leave_packet = await ExiT(None, key, iv)
-            await SEndPacKeT(whisper_writer, online_writer, 'OnLine', leave_packet)
-            print(f"[SOLO] 👋 Left team")
-        else:
-            print(f"[SOLO] ❌ Online writer not available")
-    except Exception as e:
-        print(f"[SOLO ERROR] {e}")
-
-
-async def normal_emote_command(uids, emote_code):
-    """Send normal emote to UIDs"""
-    global whisper_writer, online_writer, key, iv, region
-    
-    try:
-        print(f"[EMOTE] 📨 Sending emote to {len(uids)} player(s)")
-        
-        for uid in uids:
-            try:
-                emote_packet = await Emote_k(int(uid), int(emote_code), key, iv, region)
-                if online_writer:
-                    await SEndPacKeT(whisper_writer, online_writer, 'OnLine', emote_packet)
-                    print(f"[EMOTE] ✅ Emote sent to UID: {uid}")
-                    await asyncio.sleep(0.2)
-            except Exception as e:
-                print(f"[EMOTE] ❌ Failed to send emote to {uid}: {e}")
-        
-        print(f"[EMOTE] ✅ Emote completed for {len(uids)} player(s)")
-        
-    except Exception as e:
-        print(f"[EMOTE ERROR] {e}")
-
-
-async def join_only_command(teamcode):
-    """Join team only"""
-    global whisper_writer, online_writer, key, iv
-    
-    try:
-        join_packet = await GenJoinSquadsPacket(teamcode, key, iv)
-        if online_writer:
-            await SEndPacKeT(whisper_writer, online_writer, 'OnLine', join_packet)
-            print(f"[JOIN] ✅ Joined team with code: {teamcode}")
-        else:
-            print(f"[JOIN] ❌ Online writer not available")
-    except Exception as e:
-        print(f"[JOIN ERROR] {e}")
-
-
-# ============================================
-# MAIN FUNCTION
-# ============================================
-
 async def MaiiiinE():
     Uid, Pw = '4416612597','0_5ZOQ8_BY_ROHIT_8AOBW'
 
@@ -1243,18 +1044,13 @@ async def MaiiiinE():
     await asyncio.sleep(1)
     task2 = asyncio.create_task(TcPOnLine(OnLineiP, OnLineporT, key_val, iv_val, AutHToKen))
     
-    # ADD QUEUE PROCESSOR TASK
-    task3 = asyncio.create_task(process_command_queue())
-    
     os.system('clear')
     print(render('BIGBULL', colors=['white', 'green'], align='center'))
     print('')
     print(f" - BoT STarTinG And OnLine on TarGet : {TarGeT} | BOT NAME : {acc_name}\n")
     print(f" - BoT sTaTus > GooD | OnLinE ! (:")    
     print(f" - Subscribe > Bigbullcheats | Gaming ! (:")    
-    
-    # UPDATE GATHER WITH TASK3
-    await asyncio.gather(task1, task2, task3)
+    await asyncio.gather(task1, task2)
 
 async def StarTinG():
     while True:
