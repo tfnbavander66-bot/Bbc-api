@@ -1197,7 +1197,7 @@ async def join_only_command(teamcode):
 # ============================================
 
 async def MaiiiinE():
-    Uid, Pw = '4416612597','0_5ZOQ8_BY_ROHIT_8AOBW'
+    Uid, Pw = '4416690878','ESHHUUU_xyz007_3DOPN_BY_SPIDEERIO_GAMING_DMC1F'
 
     open_id, access_token = await GeNeRaTeAccEss(Uid, Pw)
     if not open_id or not access_token:
